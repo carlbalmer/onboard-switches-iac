@@ -1,0 +1,7 @@
+- name: Show vlan
+  become: true
+  ansible.netcommon.cli_command:
+    command: show vlan port
+  register: output
+- debug:
+      var: output

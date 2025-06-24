@@ -5,6 +5,7 @@ foo:
       ansible_connection: ansible.netcommon.network_cli
       ansible_network_os: openrail.switchos.hirschmann
       ansible_user: admin
+      ansible_password: admin
     normad:
       ansible_host: 192.168.1.41
       ansible_connection: ansible.netcommon.network_cli
@@ -19,4 +20,4 @@ foo:
       ansible_host: 192.168.1.21
       ansible_connection: ansible.netcommon.network_cli
       ansible_network_os: openrail.switchos.lantech
-      ansible_user: admin 
+      ansible_user: admin

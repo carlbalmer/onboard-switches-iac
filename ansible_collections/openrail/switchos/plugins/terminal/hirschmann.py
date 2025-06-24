@@ -11,6 +11,7 @@ class TerminalModule(TerminalBase):
 
     terminal_stderr_re = [
         re.compile(br"Error: Invalid command"),
+        re.compile(br"Error: Incomplete command"),
     ]
 
     def on_open_shell(self):

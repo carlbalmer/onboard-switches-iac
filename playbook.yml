@@ -3,19 +3,21 @@
   hosts: hirschmann
   gather_facts: false
   tasks:
-  - name: run show port
-    ignore_errors: true
-    cli_command:
-      command: show port
-  - name: run show clock with become=yes
-    become: yes
-    cli_command:
-      command: show clock
+    - name: run show port
+      cli_command:
+        command: show port
+    - name: run show clock with become=yes
+      become: true
+      cli_command:
+        command: show clock
+    - name: import_roles
+      ansible.builtin.import_role:
+        name: openrail.switchos.hirschmann
 - name: test lantech
   connection: ansible.netcommon.network_cli
   hosts: lantech
   gather_facts: false
   tasks:
-  - name: run port status on remote devices
-    cli_command:
-      command: port status
+    - name: run port status on remote devices
+      cli_command:
+        command: port status
