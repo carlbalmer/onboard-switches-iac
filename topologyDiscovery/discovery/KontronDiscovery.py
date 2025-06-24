@@ -15,7 +15,7 @@ from ssh_client import SSHClient
 from data_model import SwitchInfo, NeighborInfo
 
 
-class KontorDiscovery(BaseDiscovery):
+class KontronDiscovery(BaseDiscovery):
     """Discovery implementation for Kontron switches."""
     
     def __init__(self, host: str, username: str, password: str, port: int = 22):

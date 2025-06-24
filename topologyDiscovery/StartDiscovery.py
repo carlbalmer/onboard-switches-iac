@@ -17,7 +17,7 @@ from dataclasses import dataclass
 from switch_detector import SwitchDetector
 from discovery.HirschmannDiscovery import HirschmannDiscovery
 from discovery.LantechDiscovery import LantechDiscovery
-from discovery.KontorDiscovery import KontorDiscovery
+from discovery.KontronDiscovery import KontronDiscovery
 from discovery.NomadDiscovery import NomadDiscovery
 from data_model import NetworkTopology, SwitchInfo, NeighborInfo
 
@@ -44,7 +44,7 @@ class NetworkDiscoveryManager:
         self.discovery_classes = {
             'hirschmann': HirschmannDiscovery,
             'lantech': LantechDiscovery,
-            'kontron': KontorDiscovery,
+            'kontron': KontronDiscovery,
             'nomad': NomadDiscovery
         }
     
@@ -68,7 +68,8 @@ class NetworkDiscoveryManager:
         self.topology.discovery_timestamp = datetime.now()
         
         # Start discovery with the seed IP
-        self._discover_switch_recursive(seed_ip, depth=0)
+        #self._discover_switch_recursive(seed_ip, depth=0)
+        self._discover_switches_iterative(seed_ip)
         
         # Print discovery summary
         self._print_discovery_summary()
@@ -155,6 +156,55 @@ class NetworkDiscoveryManager:
             self.failed_switches.add(host)
             return None
     
+    def _discover_switches_iterative(self, seed_ip: str):
+        print(f"gotten seed_ip {seed_ip}")
+        seen_switches: Set[str] = set()
+        failed_switches: Set[str] = set()
+        candidate_switches: Set[str] = set()
+        candidate_switches.add(seed_ip)
+        print("Start looping candidates")
+        while candidate_switches:
+            is_ok = True
+            current_ip = candidate_switches.pop()
+            seen_switches.add(current_ip)
+            print(f"looking at {current_ip}")
+            try:
+                vendor, ssh_client, credentials = self.detector.detect_switch_type(current_ip)
+                if ssh_client:
+                    ssh_client.disconnect()  # Close the detection connection
+                    
+                if not credentials:
+                    print(f"No credentials returned for {vendor}")
+                    self.failed_switches.add(current_ip)
+                    is_ok = False
+                
+                if not vendor:
+                    print(f"Failed to detect vendor for {current_ip}")
+                    self.failed_switches.add(current_ip)
+                    is_ok = False
+
+                if is_ok:
+                    discovery_class = self.discovery_classes.get(vendor)
+                    switch_instance = discovery_class(
+                        host=current_ip,
+                        username=credentials['username'],
+                        password=credentials['password']
+                    )
+                    switch_info = switch_instance.get_switch_info()
+                    self.discovered_switches.add(switch_info)
+                    for neighbor in switch_info.neighbors:
+                        neighbor_ip = neighbor.ip
+                        if neighbor_ip not in seen_switches:
+                            candidate_switches.add(neighbor_ip)
+            except Exception as e:
+                print(f"Discovery failed for {current_ip}: {str(e)}")
+                self.failed_switches.add(current_ip)
+
+
+
+
+    
+
     def _print_discovery_summary(self) -> None:
         """Print a summary of the discovery process."""
         print("\n" + "="*60)

@@ -1,11 +1,2 @@
-all:
-  children:
-    switches:
-      hosts: {}
-      vars:
-        ansible_connection: network_cli
-        ansible_python_interpreter: '{{ ansible_playbook_python }}'
-  vars:
-    discovery_timestamp: '2025-06-24T17:36:17.084125'
-    topology_depth: 5
-    total_switches_discovered: 0
+discovery_timestamp: '2025-06-24T22:10:00.203628'
+switches: {}
