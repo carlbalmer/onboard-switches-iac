@@ -4,4 +4,10 @@
     command: show vlan port
   register: output
 - debug:
-      var: output
+    var: output
+- set_fact:
+    vlan_maps: "{{ output.stdout_lines | parse_vlan_ports_table }}"
+- debug:
+    var: vlan_maps.ports_to_vlans
+- debug:
+    var: vlan_maps.vlans_to_ports

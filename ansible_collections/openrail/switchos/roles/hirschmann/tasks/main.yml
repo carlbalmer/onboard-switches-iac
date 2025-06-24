@@ -1,4 +1,5 @@
 ---
 # import tasks from the Hirschmann role
 - name: Import show vlan
-  ansible.builtin.import_tasks: show_vlan.yml
+  ansible.builtin.import_tasks:
+    file: show_vlan.yml

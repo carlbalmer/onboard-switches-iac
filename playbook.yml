@@ -1,18 +1,8 @@
 - name: test hirschmann
-  connection: ansible.netcommon.network_cli
   hosts: hirschmann
   gather_facts: false
-  tasks:
-    - name: run show port
-      cli_command:
-        command: show port
-    - name: run show clock with become=yes
-      become: true
-      cli_command:
-        command: show clock
-    - name: import_roles
-      ansible.builtin.import_role:
-        name: openrail.switchos.hirschmann
+  roles:
+    - openrail.switchos.hirschmann
 - name: test lantech
   connection: ansible.netcommon.network_cli
   hosts: lantech
