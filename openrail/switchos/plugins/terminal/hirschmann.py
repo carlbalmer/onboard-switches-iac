@@ -7,6 +7,7 @@ class TerminalModule(TerminalBase):
 
     terminal_stdout_re = [
         re.compile(br"\(BXP\)>"),
+        re.compile(br"\(BXP\)#"),
     ]
 
     terminal_stderr_re = [
@@ -19,7 +20,7 @@ class TerminalModule(TerminalBase):
         except AnsibleConnectionFailure as exc:
             raise AnsibleConnectionFailure('unable to set terminal parameters') from exc
 
-    def on_become(self):
+    def on_become(self, passwd=None):
         if self._get_prompt().endswith(b'#'):
             return
         
