@@ -41,26 +41,12 @@ class TerminalModule(TerminalBase):
 
     # Terminal prompt patterns for SwitchOS devices
     terminal_stdout_re = [
-        re.compile(br"[\r\n]?[\w\+\-\.:\/\[\]]+(?:\([^\)]+\)){0,3}(?:[>#\$]) ?$")
+        re.compile(br"\(BXP\)>"),
+        re.compile(br"\(BXP\)#"),
     ]
-
     # Error patterns to detect command failures
     terminal_stderr_re = [
-        re.compile(br"% ?Error"),
-        re.compile(br"^% \w+", re.M),
-        re.compile(br"% ?Invalid command"),
-        re.compile(br"% ?Unknown command"),
-        re.compile(br"[\r\n%] Bad passwords"),
-        re.compile(br"invalid input", re.I),
-        re.compile(br"(?:incomplete|ambiguous) command", re.I),
-        re.compile(br"connection timed out", re.I),
-        re.compile(br"[^\r\n]+ not found"),
-        re.compile(br"'[^']' +returned error code: ?\d+"),
-        re.compile(br"Bad mask", re.I),
-        re.compile(br"% ?(\S+) ?overlaps with ?(\S+)", re.I),
-        re.compile(br"[%\S] ?Error: ?[\s]+", re.I),
-        re.compile(br"[%\S] ?Warning: ?[\s]+", re.I),
-        re.compile(br"Command authorization failed"),
+        re.compile(br"Error: Invalid command"),
     ]
 
     def on_open_shell(self):
@@ -86,47 +72,24 @@ class TerminalModule(TerminalBase):
             display.display("WARNING: Unable to disable prompts, some commands may require confirmation")
 
     def on_become(self, passwd=None):
-        """
-        Handle privilege escalation to enable mode
-        """
-        cmd = {u"command": u"enable"}
-        if passwd:
-            cmd[u"prompt"] = to_text(
-                r"[\r\n]?(?:.*)?[Pp]assword: ?$", errors="surrogate_or_strict"
-            )
-            cmd[u"answer"] = passwd
-            cmd[u"prompt_retry_check"] = True
+        if self._get_prompt().endswith(b'#'):
+            return
         
         try:
-            self._exec_cli_command(
-                to_bytes(json.dumps(cmd), errors="surrogate_or_strict")
-            )
-            prompt = self._get_prompt()
-            if prompt is None or not prompt.endswith(b"#"):
-                raise AnsibleConnectionFailure(
-                    "failed to elevate privilege to enable mode, still at prompt [%s]"
-                    % prompt
-                )
-        except AnsibleConnectionFailure as e:
-            prompt = self._get_prompt()
-            raise_from(AnsibleConnectionFailure(
-                "unable to elevate privilege to enable mode, at prompt [%s] with error: %s"
-                % (prompt, e.message if hasattr(e, 'message') else str(e))
-            ), e)
-
+            self._exec_cli_command(b'enable')
+        except AnsibleConnectionFailure as exc:
+            raise AnsibleConnectionFailure('unable to become') from exc
+    
     def on_unbecome(self):
-        """
-        Handle dropping privileges from enable mode
-        """
         prompt = self._get_prompt()
         if prompt is None:
             # if prompt is None most likely the terminal is hung up at a prompt
             return
 
-        if b"(config" in prompt:
-            # Exit configuration mode first
-            self._exec_cli_command(b"end")
-            self._exec_cli_command(b"disable")
-        elif prompt.endswith(b"#"):
-            # Exit enable mode
-            self._exec_cli_command(b"disable")
+        if prompt.strip().endswith(b'(Config)#'):
+            self._exec_cli_command(b'exit')
+
+        if prompt.endswith(b'(BXP)#'):
+            self._exec_cli_command(b'disable')
+        else:
+            raise AnsibleConnectionFailure(f'Unexpected prompt: {prompt}')
