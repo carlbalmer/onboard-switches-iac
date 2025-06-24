@@ -187,28 +187,28 @@ class SwitchDetector:
         vendor_commands = {
             'hirschmann': {
                 'system_info': 'show system info',
-                'interfaces': 'show interface status',
+                'interfaces': 'todo',
                 'lldp_neighbors': 'show lldp remote',
-                'mac_table': 'show forwarding-table',
+                'mac_table': 'todo',
                 'version': 'show version'
             },
             'lantech': {
                 'system_info': 'System configuration',
-                'interfaces': 'Port configuration',
+                'interfaces': 'tbd',
                 'lldp_neighbors': 'show lldp remote',
-                'mac_table': 'show mac-address-table',
+                'mac_table': 'todo',
                 'version': 'show version'
             },
             'kontron': {
                 'system_info': 'show version',
-                'interfaces': 'show interface status',
+                'interfaces': 'todo',
                 'lldp_neighbors': 'show lldp neighbors',
-                'mac_table': 'show mac-address-table',
+                'mac_table': 'todo',
                 'version': 'show version'
             },
             'nomad': {
                 'system_info': 'show version',
-                'interfaces': 'show interface',
+                'interfaces': 'todo',
                 'lldp_neighbors': 'show lldp neighbors',
                 'mac_table': 'show mac-address-table',
                 'version': 'show version'
