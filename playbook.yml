@@ -3,6 +3,10 @@
   hosts: foo
   gather_facts: false
   tasks:
-  - name: run show clock on remote devices
+  - name: run show port
+    cli_command:
+      command: show port
+  - name: run show clock with become=yes
+    become: yes
     cli_command:
       command: show clock
