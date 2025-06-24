@@ -1,15 +1,36 @@
-import subprocess
+"""
+Nomad Switch Discovery Implementation (Stub)
+TODO: Implement Nomad-specific discovery logic
+"""
+from typing import Dict, List, Any
+from .BaseDiscovery import BaseDiscovery
 
-from topologyDiscovery.TopologyDiscovery import SystemInterface
 
-class NomadDiscovery(SystemInterface):
-    def getSystemInfo(self):
-        return "Nomad"
-
-    def executeCommand(self, command: str):
-        result = subprocess.run(command, shell=True, capture_output=True, text=True)
-        return result.stdout
-
-    def parseOutput(self, output: str):
-        return "output"
+class NomadDiscovery(BaseDiscovery):
+    """Stub implementation for Nomad switches."""
+    
+    def connect(self) -> bool:
+        """TODO: Implement Nomad connection logic."""
+        print(f"TODO: Implement Nomad connection to {self.host}")
+        return False
+    
+    def disconnect(self) -> None:
+        """TODO: Implement Nomad disconnect logic."""  
+        pass
+    
+    def get_system_info(self) -> Dict[str, Any]:
+        """TODO: Implement Nomad system info retrieval."""
+        return {"error": "Nomad discovery not yet implemented"}
+    
+    def get_interface_info(self) -> List[Dict[str, Any]]:
+        """TODO: Implement Nomad interface info retrieval."""
+        return []
+    
+    def get_neighbor_info(self) -> List[Dict[str, Any]]:
+        """TODO: Implement Nomad neighbor info retrieval."""
+        return []
+    
+    def get_mac_table(self) -> List[Dict[str, Any]]:
+        """TODO: Implement Nomad MAC table retrieval."""
+        return []
 
