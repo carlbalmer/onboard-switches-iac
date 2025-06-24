@@ -1,0 +1,27 @@
+---
+- name: Test openrail.switchos collection plugins
+  hosts: localhost
+  gather_facts: false
+  connection: local
+  
+  tasks:
+    - name: Run hello_world plugin with default message
+      openrail.switchos.hello_world:
+      register: result1
+    
+    - name: Display default message result
+      debug:
+        var: result1
+    
+    - name: Run hello_world plugin with custom message
+      openrail.switchos.hello_world:
+        message: "Hello from SwitchOS collection!"
+      register: result2
+    
+    - name: Display custom message result
+      debug:
+        var: result2
+    
+    - name: Summary
+      debug:
+        msg: "Successfully tested openrail.switchos.hello_world plugin"
