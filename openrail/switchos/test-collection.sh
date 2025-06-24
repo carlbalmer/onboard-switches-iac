@@ -11,7 +11,7 @@ ansible-galaxy collection build --force
 ansible-galaxy collection install openrail-switchos-1.0.0.tar.gz --force
 
 # Run the test playbook
-ansible-playbook playbook.yml
+ansible-playbook test_terminal_plugin.yml -i inventory_template.ini -vvvv
 
 echo ""
 echo "Test completed!"

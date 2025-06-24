@@ -1,0 +1,87 @@
+---
+- name: Test OpenRail SwitchOS Collection Plugins
+  hosts: switchos_devices
+  gather_facts: false
+  connection: ansible.netcommon.network_cli
+  
+  vars:
+    ansible_network_os: openrail.switchos.switchos
+    ansible_user: admin
+    ansible_ssh_pass: "{{ vault_switch_password | default('admin') }}"
+    ansible_become: true
+    ansible_become_method: enable
+    ansible_become_pass: "{{ vault_enable_password | default('enable') }}"
+
+  tasks:
+    - name: Test basic connectivity and gather device info
+      openrail.switchos.switchos_command:
+        commands:
+          - show version
+          - show system
+      register: device_info
+
+    - name: Display device version
+      debug:
+        var: device_info.stdout[0]
+
+    - name: Display system information
+      debug:
+        var: device_info.stdout[1]
+
+    - name: Test interface status
+      openrail.switchos.switchos_command:
+        commands:
+          - show interfaces brief
+          - show interfaces status
+      register: interface_info
+
+    - name: Display interface information
+      debug:
+        msg: "Interface Status: {{ interface_info.stdout[0] }}"
+
+    - name: Test configuration commands
+      openrail.switchos.switchos_command:
+        commands:
+          - show running-config | include hostname
+          - show ip route
+      register: config_info
+
+    - name: Display configuration
+      debug:
+        var: config_info
+
+    - name: Test wait_for functionality
+      openrail.switchos.switchos_command:
+        commands:
+          - show version
+        wait_for:
+          - result[0] contains "Switch"
+        retries: 3
+        interval: 2
+      register: version_check
+
+    - name: Confirm version check passed
+      debug:
+        msg: "Version check completed successfully"
+
+    - name: Test multiple commands with complex output
+      openrail.switchos.switchos_command:
+        commands:
+          - show mac address-table
+          - show vlan brief
+          - show spanning-tree
+      register: network_info
+      ignore_errors: true
+
+    - name: Display network information (if available)
+      debug:
+        var: network_info
+      when: network_info is defined
+
+    - name: Summary of tests
+      debug:
+        msg: 
+          - "SwitchOS connection plugin test completed"
+          - "Device responded to {{ device_info.stdout | length }} basic commands"
+          - "Interface commands: {{ interface_info.stdout | length }} responses"
+          - "Network commands: {{ network_info.stdout | length if network_info.stdout is defined else 'N/A' }} responses"
