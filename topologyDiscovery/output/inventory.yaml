@@ -10,11 +10,8 @@ all:
         # switch_ip:
         #   ansible_host: switch_ip
         #   ansible_user: username
-        #   ansible_password: password
         #   vendor: vendor_name
         #   model: switch_model
-        #   hostname: switch_hostname
-        #   interfaces: [...]
         #   neighbors: [...]
       vars:
         ansible_connection: network_cli

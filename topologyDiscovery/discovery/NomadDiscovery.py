@@ -1,15 +1,17 @@
-import subprocess
+from typing import Dict, List, Any, Optional
 
-from topologyDiscovery.TopologyDiscovery import SystemInterface
+from topologyDiscovery.discovery import BaseDiscovery
 
-class NomadDiscovery(SystemInterface):
-    def getSystemInfo(self):
+class NomadDiscovery(BaseDiscovery):
+    def connect(self) -> bool:
+        return "connection"
+    
+    def disconnect(self) -> bool:
+        return "disconnect"
+
+    def get_system_info(self) -> Dict[str, Any]:
         return "Nomad"
-
-    def executeCommand(self, command: str):
-        result = subprocess.run(command, shell=True, capture_output=True, text=True)
-        return result.stdout
-
-    def parseOutput(self, output: str):
-        return "output"
+    
+    def get_neighbor_info(self) -> List[Dict[str, Any]]:
+        return "neighbors"
 

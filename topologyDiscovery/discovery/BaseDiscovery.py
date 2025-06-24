@@ -56,32 +56,12 @@ class BaseDiscovery(ABC):
         pass
     
     @abstractmethod
-    def get_interface_info(self) -> List[Dict[str, Any]]:
-        """
-        Get information about all interfaces on the switch.
-        
-        Returns:
-            List of dictionaries containing interface information
-        """
-        pass
-    
-    @abstractmethod
     def get_neighbor_info(self) -> List[Dict[str, Any]]:
         """
         Get LLDP neighbor information.
         
         Returns:
             List of dictionaries containing neighbor information
-        """
-        pass
-    
-    @abstractmethod
-    def get_mac_table(self) -> List[Dict[str, Any]]:
-        """
-        Get MAC address table from the switch.
-        
-        Returns:
-            List of dictionaries containing MAC table entries
         """
         pass
     
