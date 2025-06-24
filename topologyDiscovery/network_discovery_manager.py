@@ -1,6 +1,7 @@
 """
 Network Discovery Manager - Main orchestrator for switch network discovery.
 Handles the complete discovery process from initial switch detection to topology mapping.
+Uses simplified data model with only essential fields: IP, MAC, switch type, and neighbors.
 """
 import json
 import yaml
@@ -11,7 +12,7 @@ from discovery.HirschmannDiscovery import HirschmannDiscovery
 from discovery.LantechDiscovery import LantechDiscovery
 from discovery.KontorDiscovery import KontorDiscovery
 from discovery.NomadDiscovery import NomadDiscovery
-from data_model import NetworkTopology, TopologyNode, TopologyEdge, SwitchData, SystemInfo
+from data_model import NetworkTopology, SwitchInfo, NeighborInfo
 
 
 class NetworkDiscoveryManager:
@@ -57,19 +58,17 @@ class NetworkDiscoveryManager:
         print(f"🚀 Starting network discovery from seed IP: {seed_ip}")
         print(f"📊 Maximum discovery depth: {self.max_discovery_depth}")
         
-        self.topology.discovery_started = datetime.now()
+        self.topology.discovery_timestamp = datetime.now()
         
         # Start discovery with the seed IP
         self._discover_switch_recursive(seed_ip, depth=0)
-        
-        self.topology.discovery_completed = datetime.now()
         
         # Print discovery summary
         self._print_discovery_summary()
         
         return self.topology
     
-    def _discover_switch_recursive(self, host: str, depth: int = 0) -> Optional[TopologyNode]:
+    def _discover_switch_recursive(self, host: str, depth: int = 0) -> Optional[SwitchInfo]:
         """
         Recursively discover switches starting from the given host.
         
@@ -78,353 +77,169 @@ class NetworkDiscoveryManager:
             depth: Current discovery depth
             
         Returns:
-            TopologyNode if successful, None if failed
+            SwitchInfo object if discovery successful, None otherwise
         """
+        # Check if we've already processed this switch
+        if host in self.discovered_switches or host in self.failed_switches:
+            return self.topology.get_switch(host)
+        
         # Check depth limit
-        if depth > self.max_discovery_depth:
+        if depth >= self.max_discovery_depth:
             print(f"⚠️  Maximum discovery depth ({self.max_discovery_depth}) reached for {host}")
             return None
         
-        # Skip if already discovered or failed
-        if host in self.discovered_switches:
-            print(f"ℹ️  Switch {host} already discovered, skipping...")
-            return self.topology.get_node(host)
-        
-        if host in self.failed_switches:
-            print(f"⚠️  Switch {host} previously failed, skipping...")
-            return None
-        
-        print(f"🔍 Discovering switch at {host} (depth: {depth})")
-        
-        # Step 1: Auto-detect switch type
-        vendor, ssh_client, credentials = self.detector.detect_switch_type(host)
-        
-        if not vendor or not ssh_client:
-            print(f"❌ Failed to detect/connect to switch at {host}")
-            self.failed_switches.add(host)
-            return None
+        print(f"{'  ' * depth}🔍 Discovering switch at {host} (depth: {depth})")
         
         try:
-            # Step 2: Create vendor-specific discovery instance
-            discovery_class = self.discovery_classes.get(vendor)
-            if not discovery_class:
-                print(f"❌ No discovery class found for vendor: {vendor}")
-                ssh_client.disconnect()
+            # Detect switch vendor
+            vendor, ssh_client, credentials = self.detector.detect_switch_type(host)
+            if ssh_client:
+                ssh_client.disconnect()  # Close the detection connection
+                
+            if not vendor:
+                print(f"{'  ' * depth}❌ Failed to detect vendor for {host}")
                 self.failed_switches.add(host)
                 return None
             
+            if not credentials:
+                print(f"{'  ' * depth}❌ No credentials returned for {vendor}")
+                self.failed_switches.add(host)
+                return None
+            
+            print(f"{'  ' * depth}✅ Detected {vendor} switch at {host}")
+            print(f"{'  ' * depth}   Using credentials: {credentials.get('username', 'unknown')}")
+            
+            # Get appropriate discovery class
+            discovery_class = self.discovery_classes.get(vendor)
+            if not discovery_class:
+                print(f"{'  ' * depth}❌ No discovery implementation for {vendor}")
+                self.failed_switches.add(host)
+                return None
+            
+            # Create discovery instance with detected credentials
             discovery = discovery_class(
                 host=host,
                 username=credentials['username'],
                 password=credentials['password']
             )
             
-            # Use the existing connection
-            discovery.ssh_client = ssh_client
+            # Get switch information
+            switch_info = discovery.get_switch_info()
             
-            # Step 3: Gather switch information
-            print(f"📋 Gathering information from {vendor} switch at {host}")
-            
-            system_info = discovery.get_system_info()
-            interfaces = discovery.get_interface_info()
-            neighbors = discovery.get_neighbor_info()
-            mac_table = discovery.get_mac_table()
-            
-            # Step 4: Create switch data structure
-            switch_data = self._create_switch_data(
-                host, vendor, system_info, interfaces, neighbors, mac_table
-            )
-            
-            # Step 5: Create topology node
-            topology_node = TopologyNode(
-                host=host,
-                switch_data=switch_data,
-                connections=[],
-                discovered=True,
-                discovery_depth=depth
-            )
-            
-            # Step 6: Add to topology
-            self.topology.add_node(topology_node)
+            # Add to topology
+            self.topology.add_switch(switch_info)
             self.discovered_switches.add(host)
             
-            # Step 7: Print switch information
-            self._print_switch_info(switch_data)
+            print(f"{'  ' * depth}📝 Added switch {host} to topology")
+            print(f"{'  ' * depth}   MAC: {switch_info.mac}")
+            print(f"{'  ' * depth}   Type: {switch_info.type}")
+            print(f"{'  ' * depth}   Neighbors: {len(switch_info.neighbors)}")
             
-            # Step 8: Process LLDP neighbors for recursive discovery
-            neighbor_ips = self._extract_neighbor_ips(neighbors)
-            topology_node.connections = neighbor_ips
+            # Discover neighbors recursively
+            for neighbor in switch_info.neighbors:
+                if neighbor.ip and neighbor.ip not in self.discovered_switches:
+                    print(f"{'  ' * depth}🔗 Found neighbor: {neighbor.ip} ({neighbor.type})")
+                    self._discover_switch_recursive(neighbor.ip, depth + 1)
             
-            # Step 9: Add edges for discovered neighbors
-            for neighbor_info in neighbors:
-                neighbor_ip = self._extract_ip_from_neighbor(neighbor_info)
-                if neighbor_ip:
-                    edge = TopologyEdge(
-                        source_host=host,
-                        source_interface=neighbor_info.get('local_interface', 'unknown'),
-                        target_host=neighbor_ip,
-                        target_interface=neighbor_info.get('remote_port_id', 'unknown'),
-                        connection_type='lldp'
-                    )
-                    self.topology.add_edge(edge)
-            
-            # Step 10: Recursively discover neighbors
-            print(f"🔗 Found {len(neighbor_ips)} neighbors for {host}: {neighbor_ips}")
-            
-            for neighbor_ip in neighbor_ips:
-                self._discover_switch_recursive(neighbor_ip, depth + 1)
-            
-            # Clean up connection
-            discovery.disconnect()
-            
-            return topology_node
+            return switch_info
             
         except Exception as e:
-            print(f"❌ Error during discovery of {host}: {e}")
-            if ssh_client:
-                ssh_client.disconnect()
+            print(f"{'  ' * depth}❌ Discovery failed for {host}: {str(e)}")
             self.failed_switches.add(host)
             return None
     
-    def _create_switch_data(self, host: str, vendor: str, system_info: dict, 
-                           interfaces: list, neighbors: list, mac_table: list) -> SwitchData:
-        """Create a SwitchData object from discovery results."""
-        
-        # Create SystemInfo object
-        sys_info = SystemInfo(
-            hostname=system_info.get('hostname'),
-            model=system_info.get('model'),
-            vendor=vendor,
-            os_version=system_info.get('os_version'),
-            serial_number=system_info.get('serial_number'),
-            uptime=system_info.get('uptime'),
-            location=system_info.get('location'),
-            contact=system_info.get('contact'),
-            description=system_info.get('description')
-        )
-        
-        # Create SwitchData object
-        switch_data = SwitchData(
-            host=host,
-            discovery_timestamp=datetime.now(),
-            system_info=sys_info,
-            interfaces=[],  # Would convert to SwitchInterface objects
-            lldp_neighbors=[],  # Would convert to LLDPNeighbor objects
-            mac_table=[],  # Would convert to MacTableEntry objects
-            raw_data={
-                'system_info': system_info,
-                'interfaces': interfaces,
-                'neighbors': neighbors,
-                'mac_table': mac_table
-            }
-        )
-        
-        return switch_data
-    
-    def _extract_neighbor_ips(self, neighbors: List[Dict[str, Any]]) -> List[str]:
-        """Extract IP addresses from neighbor information."""
-        ips = []
-        
-        for neighbor in neighbors:
-            ip = self._extract_ip_from_neighbor(neighbor)
-            if ip and ip not in ips:
-                ips.append(ip)
-        
-        return ips
-    
-    def _extract_ip_from_neighbor(self, neighbor: Dict[str, Any]) -> Optional[str]:
-        """Extract IP address from a single neighbor entry."""
-        # Try different fields where IP might be stored
-        ip_fields = [
-            'remote_management_address',
-            'management_address',
-            'remote_ip',
-            'ip_address',
-            'address'
-        ]
-        
-        for field in ip_fields:
-            if field in neighbor and neighbor[field]:
-                ip = neighbor[field].strip()
-                # Basic IP validation
-                if self._is_valid_ip(ip):
-                    return ip
-        
-        return None
-    
-    def _is_valid_ip(self, ip: str) -> bool:
-        """Basic IP address validation."""
-        try:
-            parts = ip.split('.')
-            return len(parts) == 4 and all(0 <= int(part) <= 255 for part in parts)
-        except:
-            return False
-    
-    def _print_switch_info(self, switch_data: SwitchData) -> None:
-        """Print formatted switch information."""
-        print(f"\n📋 Switch Information for {switch_data.host}")
-        print("=" * 50)
-        
-        sys_info = switch_data.system_info
-        if sys_info.hostname:
-            print(f"Hostname: {sys_info.hostname}")
-        if sys_info.vendor:
-            print(f"Vendor: {sys_info.vendor}")
-        if sys_info.model:
-            print(f"Model: {sys_info.model}")
-        if sys_info.os_version:
-            print(f"OS Version: {sys_info.os_version}")
-        if sys_info.serial_number:
-            print(f"Serial Number: {sys_info.serial_number}")
-        if sys_info.uptime:
-            print(f"Uptime: {sys_info.uptime}")
-        if sys_info.location:
-            print(f"Location: {sys_info.location}")
-        if sys_info.contact:
-            print(f"Contact: {sys_info.contact}")
-        
-        # Print raw data for debugging
-        raw_system = switch_data.raw_data.get('system_info', {})
-        if 'management_ip' in raw_system:
-            print(f"Management IP: {raw_system['management_ip']}")
-        if 'management_mac' in raw_system:
-            print(f"Management MAC: {raw_system['management_mac']}")
-        
-        print(f"Interfaces: {len(switch_data.raw_data.get('interfaces', []))}")
-        print(f"LLDP Neighbors: {len(switch_data.raw_data.get('neighbors', []))}")
-        print(f"MAC Table Entries: {len(switch_data.raw_data.get('mac_table', []))}")
-        print()
-    
     def _print_discovery_summary(self) -> None:
-        """Print discovery summary."""
-        print("\n" + "=" * 60)
-        print("🎯 NETWORK DISCOVERY SUMMARY")
-        print("=" * 60)
-        
-        duration = self.topology.discovery_completed - self.topology.discovery_started
-        
-        print(f"Discovery started: {self.topology.discovery_started.strftime('%Y-%m-%d %H:%M:%S')}")
-        print(f"Discovery completed: {self.topology.discovery_completed.strftime('%Y-%m-%d %H:%M:%S')}")
-        print(f"Total duration: {duration}")
-        print(f"Switches discovered: {len(self.discovered_switches)}")
-        print(f"Failed switches: {len(self.failed_switches)}")
-        print(f"Network connections: {len(self.topology.edges)}")
+        """Print a summary of the discovery process."""
+        print("\n" + "="*60)
+        print("📊 NETWORK DISCOVERY SUMMARY")
+        print("="*60)
+        print(f"✅ Successfully discovered: {len(self.discovered_switches)} switches")
+        print(f"❌ Failed to discover: {len(self.failed_switches)} switches")
+        print(f"🕒 Discovery timestamp: {self.topology.discovery_timestamp}")
         
         if self.discovered_switches:
-            print(f"\n✅ Successfully discovered switches:")
+            print(f"\n📋 Discovered switches:")
             for ip in sorted(self.discovered_switches):
-                node = self.topology.get_node(ip)
-                if node and node.switch_data.system_info.hostname:
-                    print(f"  - {ip} ({node.switch_data.system_info.hostname})")
-                else:
-                    print(f"  - {ip}")
+                switch = self.topology.get_switch(ip)
+                if switch:
+                    print(f"   {ip} - {switch.type} ({len(switch.neighbors)} neighbors)")
         
         if self.failed_switches:
-            print(f"\n❌ Failed to discover switches:")
+            print(f"\n⚠️  Failed switches:")
             for ip in sorted(self.failed_switches):
-                print(f"  - {ip}")
+                print(f"   {ip}")
         
-        print()
+        print("="*60)
     
-    def save_topology(self, filename: str = None) -> str:
+    def save_to_file(self, filename: str, format: str = 'json') -> None:
         """
-        Save discovered topology to JSON file.
+        Save topology to file.
         
         Args:
-            filename: Output filename (default: topology_YYYYMMDD_HHMMSS.json)
-            
-        Returns:
-            Path to saved file
+            filename: Output filename
+            format: Output format ('json' or 'yaml')
         """
-        if not filename:
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"output/topology_{timestamp}.json"
-        
         topology_dict = self.topology.to_dict()
         
         try:
             with open(filename, 'w') as f:
-                json.dump(topology_dict, f, indent=2, default=str)
+                if format.lower() == 'yaml':
+                    yaml.dump(topology_dict, f, default_flow_style=False, indent=2)
+                else:
+                    json.dump(topology_dict, f, indent=2, default=str)
             
-            print(f"💾 Topology saved to: {filename}")
-            return filename
+            print(f"💾 Topology saved to {filename}")
             
         except Exception as e:
-            print(f"❌ Failed to save topology: {e}")
-            return ""
+            print(f"❌ Failed to save topology: {str(e)}")
     
-    def generate_inventory(self, filename: str = None) -> str:
+    def get_topology_stats(self) -> Dict[str, Any]:
         """
-        Generate Ansible inventory from discovered topology.
+        Get statistics about the discovered topology.
         
-        Args:
-            filename: Output filename (default: output/inventory.yaml)
-            
         Returns:
-            Path to generated inventory file
+            Dictionary with statistics
         """
-        if not filename:
-            filename = "output/inventory.yaml"
-        
-        inventory = {
-            'all': {
-                'children': {
-                    'switches': {
-                        'hosts': {},
-                        'vars': {
-                            'ansible_connection': 'network_cli',
-                            'ansible_python_interpreter': '{{ ansible_playbook_python }}'
-                        }
-                    }
-                },
-                'vars': {
-                    'discovery_timestamp': self.topology.discovery_completed.isoformat() if self.topology.discovery_completed else None,
-                    'total_switches_discovered': len(self.discovered_switches),
-                    'topology_depth': self.max_discovery_depth
-                }
-            }
+        stats = {
+            'total_switches': len(self.topology.switches),
+            'switch_types': {},
+            'total_neighbors': 0,
+            'discovery_timestamp': self.topology.discovery_timestamp,
+            'discovered_ips': list(self.discovered_switches),
+            'failed_ips': list(self.failed_switches)
         }
         
-        # Add discovered switches to inventory
-        for host, node in self.topology.nodes.items():
-            sys_info = node.switch_data.system_info
-            
-            inventory['all']['children']['switches']['hosts'][host] = {
-                'ansible_host': host,
-                'vendor': sys_info.vendor or 'unknown',
-                'model': sys_info.model or 'unknown',
-                'hostname': sys_info.hostname or 'unknown',
-                'serial_number': sys_info.serial_number or 'unknown',
-                'os_version': sys_info.os_version or 'unknown',
-                'discovery_depth': node.discovery_depth,
-                'neighbor_count': len(node.connections)
-            }
+        # Count switch types and neighbors
+        for switch in self.topology.switches.values():
+            switch_type = switch.type or 'unknown'
+            stats['switch_types'][switch_type] = stats['switch_types'].get(switch_type, 0) + 1
+            stats['total_neighbors'] += len(switch.neighbors)
         
-        try:
-            with open(filename, 'w') as f:
-                yaml.dump(inventory, f, default_flow_style=False, indent=2)
-            
-            print(f"📋 Ansible inventory generated: {filename}")
-            return filename
-            
-        except Exception as e:
-            print(f"❌ Failed to generate inventory: {e}")
-            return ""
+        return stats
 
 
-if __name__ == "__main__":
+def main():
+    """
+    Main function for testing the network discovery manager.
+    """
     # Example usage
     discovery_manager = NetworkDiscoveryManager()
     
-    # Start discovery from seed IP
-    seed_ip = "192.168.1.31"  # Hirschmann switch example
-    
-    print("🚀 Starting Network Discovery Tool")
-    print(f"Seed IP: {seed_ip}")
-    
-    # Discover the network
-    topology = discovery_manager.discover_network(seed_ip, max_depth=3)
+    # Discover network starting from a seed IP
+    seed_ip = "192.168.1.100"  # Replace with actual seed IP
+    topology = discovery_manager.discover_network(seed_ip)
     
     # Save results
-    discovery_manager.save_topology()
-    discovery_manager.generate_inventory()
+    discovery_manager.save_to_file('discovered_topology.json', 'json')
+    discovery_manager.save_to_file('discovered_topology.yaml', 'yaml')
+    
+    # Print statistics
+    stats = discovery_manager.get_topology_stats()
+    print(f"\n📈 Topology Statistics:")
+    print(f"   Total switches: {stats['total_switches']}")
+    print(f"   Switch types: {stats['switch_types']}")
+    print(f"   Total neighbor connections: {stats['total_neighbors']}")
+
+
+if __name__ == "__main__":
+    main()

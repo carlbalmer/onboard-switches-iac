@@ -72,19 +72,28 @@ Examples:
             max_depth=args.depth
         )
         
-        # Save results
-        topology_file = discovery_manager.save_topology(
-            f"{args.output_dir}/topology_{args.seed_ip.replace('.', '_')}.json"
-        )
+        # Create output directory if it doesn't exist
+        import os
+        os.makedirs(args.output_dir, exist_ok=True)
         
-        inventory_file = discovery_manager.generate_inventory(
-            f"{args.output_dir}/inventory.yaml"
-        )
+        # Save results
+        topology_filename = f"{args.output_dir}/topology_{args.seed_ip.replace('.', '_')}.json"
+        inventory_filename = f"{args.output_dir}/inventory.yaml"
+        
+        discovery_manager.save_to_file(topology_filename, 'json')
+        discovery_manager.save_to_file(inventory_filename, 'yaml')
+        
+        # Print statistics
+        stats = discovery_manager.get_topology_stats()
         
         print("🎉 Discovery completed successfully!")
         print(f"Results saved to:")
-        print(f"  - Topology: {topology_file}")
-        print(f"  - Inventory: {inventory_file}")
+        print(f"  - Topology (JSON): {topology_filename}")
+        print(f"  - Inventory (YAML): {inventory_filename}")
+        print(f"\n📊 Discovery Statistics:")
+        print(f"  - Total switches discovered: {stats['total_switches']}")
+        print(f"  - Switch types: {stats['switch_types']}")
+        print(f"  - Total neighbor connections: {stats['total_neighbors']}")
         
     except KeyboardInterrupt:
         print("\n⚠️ Discovery interrupted by user")

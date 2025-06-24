@@ -12,7 +12,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from .BaseDiscovery import BaseDiscovery
 from ssh_client import SSHClient
-from data_model import SystemInfo, SwitchInterface, LLDPNeighbor, MacTableEntry
+from data_model import SwitchInfo, NeighborInfo
 
 
 class HirschmannDiscovery(BaseDiscovery):
@@ -73,8 +73,8 @@ class HirschmannDiscovery(BaseDiscovery):
             
             for command in commands:
                 output = self.ssh_client.send_command_to_shell(command, 3.0)
-                if output and ("mac" in output.lower() or "hirschmann" in output.lower()):
-                    return self._parse_hirschmann_version_info(output)
+                if output and ("System information" in output or "hirschmann" in output.lower()):
+                    return self._parse_hirschmann_system_info(output)
             
             return {"error": "Could not retrieve system information"}
             
@@ -161,49 +161,12 @@ class HirschmannDiscovery(BaseDiscovery):
     
     def get_interface_info(self) -> List[Dict[str, Any]]:
         """
-        Get interface information from Hirschmann switch.
+        Simplified interface info - not needed for discovery.
         
         Returns:
-            List of dictionaries containing interface information
+            Empty list (interfaces not required for discovery)
         """
-        try:
-            output = self.ssh_client.send_command_to_shell("show interface status", 3.0)
-            if output:
-                return self._parse_hirschmann_interfaces(output)
-            return []
-            
-        except Exception as e:
-            print(f"Failed to get interface info: {e}")
-            return []
-    
-    def _parse_hirschmann_interfaces(self, output: str) -> List[Dict[str, Any]]:
-        """
-        Parse Hirschmann interface status output.
-        
-        Args:
-            output: Raw interface status output
-            
-        Returns:
-            List of interface dictionaries
-        """
-        interfaces = []
-        
-        # This is a simplified parser - would need to be adjusted based on actual output format
-        lines = output.split('\n')
-        for line in lines:
-            if re.match(r'^\s*(eth|port|interface)', line.lower()):
-                parts = line.split()
-                if len(parts) >= 3:
-                    interface = {
-                        "name": parts[0],
-                        "admin_status": parts[1] if len(parts) > 1 else "unknown",
-                        "oper_status": parts[2] if len(parts) > 2 else "unknown",
-                        "speed": None,
-                        "duplex": None
-                    }
-                    interfaces.append(interface)
-        
-        return interfaces
+        return []
     
     def get_neighbor_info(self) -> List[Dict[str, Any]]:
         """
@@ -263,48 +226,157 @@ class HirschmannDiscovery(BaseDiscovery):
     
     def get_mac_table(self) -> List[Dict[str, Any]]:
         """
-        Get MAC address table from Hirschmann switch.
+        Simplified MAC table - not needed for discovery.
         
         Returns:
-            List of dictionaries containing MAC table entries
+            Empty list (MAC table not required for discovery)
+        """
+        return []
+    
+    def get_switch_info(self) -> SwitchInfo:
+        """
+        Get simplified switch information for network discovery.
+        
+        Returns:
+            SwitchInfo object with essential fields only
         """
         try:
-            output = self.ssh_client.send_command_to_shell("show forwarding-table", 3.0)
+            # First, establish connection
+            print(f"Attempting to connect to {self.host} with username: {self.username}")
+            if not self.connect():
+                print(f"Failed to connect to {self.host}")
+                return SwitchInfo(
+                    ip=self.host,
+                    mac=None,
+                    type='hirschmann',
+                    neighbors=[]
+                )
+            
+            print(f"Successfully connected to {self.host}")
+            
+            # Get system info to extract IP, MAC, and switch type
+            system_info = self.get_system_info()
+            print(f"System info retrieved: {list(system_info.keys()) if system_info else 'None'}")
+            
+            # Extract essential information
+            ip = self.host
+            mac = system_info.get('management_mac')
+            switch_type = system_info.get('vendor', 'hirschmann')
+            
+            # Get neighbor information
+            print("Getting neighbor information...")
+            neighbors = self.get_simplified_neighbors()
+            print(f"Found {len(neighbors)} neighbors")
+            
+            # Disconnect after gathering information
+            self.disconnect()
+            print(f"Disconnected from {self.host}")
+            
+            return SwitchInfo(
+                ip=ip,
+                mac=mac,
+                type=switch_type,
+                neighbors=neighbors
+            )
+            
+        except Exception as e:
+            print(f"Failed to get switch info: {e}")
+            # Make sure to disconnect on error
+            try:
+                self.disconnect()
+            except:
+                pass
+            return SwitchInfo(
+                ip=self.host,
+                mac=None,
+                type='hirschmann',
+                neighbors=[]
+            )
+    
+    def get_simplified_neighbors(self) -> List[NeighborInfo]:
+        """
+        Get simplified neighbor information from LLDP.
+        
+        Returns:
+            List of NeighborInfo objects
+        """
+        try:
+            output = self.ssh_client.send_command_to_shell("show lldp remote-data", 3.0)
             if output:
-                return self._parse_hirschmann_mac_table(output)
+                return self._parse_simple_lldp(output)
             return []
             
         except Exception as e:
-            print(f"Failed to get MAC table: {e}")
+            print(f"Failed to get neighbor info: {e}")
             return []
     
-    def _parse_hirschmann_mac_table(self, output: str) -> List[Dict[str, Any]]:
+    def _parse_simple_lldp(self, output: str) -> List[NeighborInfo]:
         """
-        Parse Hirschmann MAC address table output.
+        Parse LLDP output and extract only essential neighbor information.
         
         Args:
-            output: Raw MAC table output
+            output: Raw LLDP output
             
         Returns:
-            List of MAC table entry dictionaries
+            List of NeighborInfo objects
         """
-        mac_entries = []
+        neighbors = []
         
-        # Parse MAC table - format would need adjustment based on actual output
+        # Parse Hirschmann LLDP remote-data output format
         lines = output.split('\n')
-        for line in lines:
-            # Look for MAC address patterns
-            mac_match = re.search(r'([0-9a-fA-F]{2}[:-]){5}[0-9a-fA-F]{2}', line)
-            if mac_match:
-                parts = line.split()
-                if len(parts) >= 3:
-                    entry = {
-                        "mac_address": mac_match.group(0),
-                        "vlan_id": 1,  # Default VLAN
-                        "interface": parts[-1] if parts else "unknown",
-                        "entry_type": "dynamic"
-                    }
-                    mac_entries.append(entry)
+        current_neighbor = {}
         
-        return mac_entries
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+            
+            # Look for IPv4 Management address
+            if 'IPv4 Management address' in line:
+                ip_match = re.search(r'(\d+\.\d+\.\d+\.\d+)', line)
+                if ip_match:
+                    current_neighbor['ip'] = ip_match.group(1)
+            
+            # Look for Chassis ID (MAC address)
+            elif 'Chassis ID' in line:
+                mac_match = re.search(r'([0-9a-fA-F]{2}[:-]){5}[0-9a-fA-F]{2}', line)
+                if mac_match:
+                    current_neighbor['mac'] = mac_match.group(0)
+            
+            # Look for System description to determine neighbor type
+            elif 'System description' in line:
+                line_lower = line.lower()
+                if 'hirschmann' in line_lower:
+                    current_neighbor['type'] = 'hirschmann'
+                elif 'lantech' in line_lower:
+                    current_neighbor['type'] = 'lantech'
+                elif 'kontron' in line_lower:
+                    current_neighbor['type'] = 'kontron'
+                elif 'nomad' in line_lower:
+                    current_neighbor['type'] = 'nomad'
+                else:
+                    # Try to guess type from system description
+                    current_neighbor['type'] = 'unknown'
+            
+            # Check if we have a complete neighbor entry and start a new one
+            elif line.startswith('Remote data,') and current_neighbor:
+                if 'ip' in current_neighbor:
+                    neighbor = NeighborInfo(
+                        ip=current_neighbor.get('ip'),
+                        mac=current_neighbor.get('mac'),
+                        type=current_neighbor.get('type', 'unknown')
+                    )
+                    neighbors.append(neighbor)
+                current_neighbor = {}
+        
+        # Add the last neighbor if we have one
+        if current_neighbor and 'ip' in current_neighbor:
+            neighbor = NeighborInfo(
+                ip=current_neighbor.get('ip'),
+                mac=current_neighbor.get('mac'),
+                type=current_neighbor.get('type', 'unknown')
+            )
+            neighbors.append(neighbor)
+        
+        return neighbors
 

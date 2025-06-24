@@ -4,6 +4,13 @@ Defines the common interface that all vendor-specific discovery classes must imp
 """
 from abc import ABC, abstractmethod
 from typing import Dict, List, Any, Optional
+import sys
+import os
+
+# Add parent directory to path for imports
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from data_model import SwitchInfo, NeighborInfo
 
 
 class BaseDiscovery(ABC):
@@ -55,15 +62,15 @@ class BaseDiscovery(ABC):
         """
         pass
     
-    @abstractmethod
     def get_interface_info(self) -> List[Dict[str, Any]]:
         """
         Get information about all interfaces on the switch.
+        Default implementation returns empty list (optional for discovery).
         
         Returns:
             List of dictionaries containing interface information
         """
-        pass
+        return []
     
     @abstractmethod
     def get_neighbor_info(self) -> List[Dict[str, Any]]:
@@ -75,16 +82,27 @@ class BaseDiscovery(ABC):
         """
         pass
     
-    @abstractmethod
     def get_mac_table(self) -> List[Dict[str, Any]]:
         """
         Get MAC address table from the switch.
+        Default implementation returns empty list (optional for discovery).
         
         Returns:
             List of dictionaries containing MAC table entries
         """
-        pass
+        return []
     
+    @abstractmethod
+    def get_switch_info(self) -> SwitchInfo:
+        """
+        Get simplified switch information for network discovery.
+        This is the main method used by the network discovery manager.
+        
+        Returns:
+            SwitchInfo object with essential fields only (IP, MAC, type, neighbors)
+        """
+        pass
+
     def discover(self) -> Dict[str, Any]:
         """
         Main discovery method that orchestrates the discovery process.

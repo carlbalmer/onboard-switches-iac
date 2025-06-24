@@ -5,7 +5,6 @@ import yaml
 import time
 from typing import Dict, List, Optional, Tuple
 from ssh_client import SSHClient
-from data_model import SystemInfo
 
 
 class SwitchDetector:
