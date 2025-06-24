@@ -1,16 +1,17 @@
 ---
 - name: Train Switch Management Playbook
   hosts: train_switches
-  gather_facts: false
-  connection: network_cli
-
+  gather_facts: no
+  vars:
+    python_path: "/Users/mishrasw/hack4rail/PacketOnRails/.venv/bin/python"
+  
   tasks:
-    - name: Execute 'show port' command on switch
-      ansible.netcommon.cli_command:
-        command: 'show port'
+    - name: Execute 'show port' command on switch using custom SSH script
+      command: "{{ python_path }} {{ playbook_dir }}/ssh_command.py {{ inventory_hostname }} {{ ansible_user }} {{ ansible_password }} 'show port'"
       register: port_output
-
+      delegate_to: localhost
+      
     - name: Display port information in debug
-      ansible.builtin.debug:
-        msg: "{{ port_output.stdout_lines }}"
-      when: port_output.stdout_lines is defined
+      debug:
+        msg: "{{ port_output.stdout.split('\n') }}"
+      when: port_output.stdout is defined
