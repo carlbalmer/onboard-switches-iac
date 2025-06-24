@@ -1,0 +1,11 @@
+- name: Show vlans
+  become: true
+  ansible.netcommon.cli_command:
+    command: show running-config script
+  register: output
+- debug:
+    var: output
+- set_fact:
+    vlans: "{{ output.stdout_lines | openrail.switchos.hirschmann.parse_vlans }}"
+- debug:
+    var: vlans

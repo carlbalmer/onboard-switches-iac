@@ -1,12 +1,12 @@
-- name: Show vlan
+- name: Show vlan members
   become: true
   ansible.netcommon.cli_command:
-    command: show vlan port
+    command: show vlan member current
   register: output
 - debug:
     var: output
 - set_fact:
-    vlan_maps: "{{ output.stdout_lines | parse_vlan_ports_table }}"
+    vlan_maps: "{{ output.stdout_lines | openrail.switchos.hirschmann.parse_vlan_ports_table }}"
 - debug:
     var: vlan_maps.ports_to_vlans
 - debug:
