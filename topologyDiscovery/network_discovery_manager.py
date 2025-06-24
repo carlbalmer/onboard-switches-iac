@@ -10,7 +10,7 @@ from typing import Dict, List, Set, Optional, Any
 from switch_detector import SwitchDetector
 from discovery.HirschmannDiscovery import HirschmannDiscovery
 from discovery.LantechDiscovery import LantechDiscovery
-from discovery.KontorDiscovery import KontorDiscovery
+from discovery.KontorDiscovery import KontronDiscovery
 from discovery.NomadDiscovery import NomadDiscovery
 from data_model import NetworkTopology, SwitchInfo, NeighborInfo
 
@@ -37,7 +37,7 @@ class NetworkDiscoveryManager:
         self.discovery_classes = {
             'hirschmann': HirschmannDiscovery,
             'lantech': LantechDiscovery,
-            'kontron': KontorDiscovery,
+            'kontron': KontronDiscovery,
             'nomad': NomadDiscovery
         }
     

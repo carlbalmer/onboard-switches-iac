@@ -2,13 +2,13 @@
 from .BaseDiscovery import BaseDiscovery
 from .HirschmannDiscovery import HirschmannDiscovery
 from .LantechDiscovery import LantechDiscovery
-from .KontorDiscovery import KontorDiscovery
+from .KontorDiscovery import KontronDiscovery
 from .NomadDiscovery import NomadDiscovery
 
 __all__ = [
     'BaseDiscovery',
     'HirschmannDiscovery', 
     'LantechDiscovery',
-    'KontorDiscovery',
+    'KontronDiscovery',
     'NomadDiscovery'
 ]
