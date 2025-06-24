@@ -16,7 +16,7 @@ from ansible_collections.ansible.netcommon.plugins.module_utils.network.common.c
 from ansible_collections.ansible.netcommon.plugins.module_utils.network.common.utils import (
     to_list,
 )
-from ansible_collections.openral.switchos.plugins.module_utils.network.hirschmann.facts.facts import Facts
+from ansible_collections.openrail.switchos.plugins.module_utils.network.hirschmann.facts.facts import Facts
 
 
 class Vlans(ConfigBase):

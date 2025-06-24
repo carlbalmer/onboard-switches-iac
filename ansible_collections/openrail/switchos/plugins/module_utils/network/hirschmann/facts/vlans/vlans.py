@@ -15,7 +15,7 @@ from copy import deepcopy
 from ansible_collections.ansible.netcommon.plugins.module_utils.network.common import (
     utils,
 )
-from ansible_collections.openral.switchos.plugins.module_utils.network.hirschmann.argspec.vlans.vlans import VlansArgs
+from ansible_collections.openrail.switchos.plugins.module_utils.network.hirschmann.argspec.vlans.vlans import VlansArgs
 
 
 class VlansFacts(object):

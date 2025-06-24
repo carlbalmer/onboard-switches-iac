@@ -9,11 +9,11 @@ this file validates each subset of facts and selectively
 calls the appropriate facts gathering function
 """
 
-from ansible_collections.openral.switchos.plugins.module_utils.network.hirschmann.argspec.facts.facts import FactsArgs
+from ansible_collections.openrail.switchos.plugins.module_utils.network.hirschmann.argspec.facts.facts import FactsArgs
 from ansible_collections.ansible.netcommon.plugins.module_utils.network.common.facts.facts import (
     FactsBase,
 )
-from ansible_collections.openral.switchos.plugins.module_utils.network.hirschmann.facts.vlans.vlans import VlansFacts
+from ansible_collections.openrail.switchos.plugins.module_utils.network.hirschmann.facts.vlans.vlans import VlansFacts
 
 
 FACT_LEGACY_SUBSETS = {}

@@ -133,8 +133,8 @@ commands:
 
 
 from ansible.module_utils.basic import AnsibleModule
-from ansible_collections.openral.switchos.plugins.module_utils.network.hirschmann.argspec.vlans.vlans import VlansArgs
-from ansible_collections.openral.switchos.plugins.module_utils.network.hirschmann.config.vlans.vlans import Vlans
+from ansible_collections.openrail.switchos.plugins.module_utils.network.hirschmann.argspec.vlans.vlans import VlansArgs
+from ansible_collections.openrail.switchos.plugins.module_utils.network.hirschmann.config.vlans.vlans import Vlans
 
 
 def main():
