@@ -7,10 +7,11 @@ echo "Testing openrail.switchos collection..."
 echo "========================================"
 
 # Set the collections path to include the current directory
-export ANSIBLE_COLLECTIONS_PATH=$(pwd):~/.ansible/collections
+ansible-galaxy collection build --force
+ansible-galaxy collection install openrail-switchos-1.0.0.tar.gz --force
 
 # Run the test playbook
-ansible-playbook openrail/switchos/playbook.yml
+ansible-playbook playbook.yml
 
 echo ""
 echo "Test completed!"
