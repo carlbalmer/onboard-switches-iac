@@ -1,6 +1,6 @@
-- name: test
+- name: test hirschmann
   connection: ansible.netcommon.network_cli
-  hosts: foo
+  hosts: hirschmann
   gather_facts: false
   tasks:
   - name: run show port
@@ -11,3 +11,11 @@
     become: yes
     cli_command:
       command: show clock
+- name: test lantech
+  connection: ansible.netcommon.network_cli
+  hosts: lantech
+  gather_facts: false
+  tasks:
+  - name: run port status on remote devices
+    cli_command:
+      command: port status

@@ -16,7 +16,7 @@ name: lantech
 short_description: Use lantech cliconf to run command on Lantech BXP platform
 description:
   - This lantech plugin provides low level abstraction apis for
-    sending and receiving CLI commands from Hirschmann BXP network devices.
+    sending and receiving CLI commands from Lantech TPES-6616XT network devices.
 """
 
 
@@ -25,11 +25,11 @@ class Cliconf(CliconfBase):
     def get_device_info(self):
         device_info = {}
 
-        device_info['network_os'] = 'hirschmann'
+        device_info['network_os'] = 'lantech'
 
-        reply = self.get('show running-configuration')
+        reply = self.get('System Configuration')
         data = to_text(reply, errors='surrogate_or_strict').strip()
-        match = re.search(r'^system name (.+)', data, re.M)
+        match = re.search(r'^Name\s+(.+)', data, re.M)
         if match:
             device_info['network_os_hostname'] = match.group(1)
 
@@ -37,16 +37,11 @@ class Cliconf(CliconfBase):
 
     @enable_mode
     def get_config(self, source='running', flags=None, format='text'):
-        if source not in ('running'):
-            return ("fetching configuration from %s is not supported" % source)
-        if source == 'running':
-            cmd = 'show running-config script'
-        return self.send_command(cmd)
+        pass
 
     @enable_mode
     def edit_config(self, command) -> None:
-        for cmd in chain(['configure'], to_list(command), ['exit']):
-            self.send_command(to_bytes(cmd))
+        pass
 
     def get(self, command, prompt=None, answer=None, sendonly=False, newline=True, check_all=False):
         return self.send_command(command=command, prompt=prompt, answer=answer, sendonly=sendonly, newline=newline, check_all=check_all)

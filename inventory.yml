@@ -15,3 +15,8 @@ foo:
       ansible_connection: ansible.netcommon.network_cli
       ansible_network_os: openrail.switchos.kontron
       ansible_user: admin
+    lantech:
+      ansible_host: 192.168.1.21
+      ansible_connection: ansible.netcommon.network_cli
+      ansible_network_os: openrail.switchos.lantech
+      ansible_user: admin 
