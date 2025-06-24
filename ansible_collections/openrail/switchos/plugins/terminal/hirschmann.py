@@ -38,6 +38,6 @@ class TerminalModule(TerminalBase):
             self._exec_cli_command(b'exit')
 
         if prompt.endswith(b'(BXP)#'):
-            self._exec_cli_command(b'disable')
+            self._exec_cli_command(b'exit')
         else:
             raise AnsibleConnectionFailure(f'Unexpected prompt: {prompt}')
