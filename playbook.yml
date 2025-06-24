@@ -1,0 +1,8 @@
+- name: test
+  connection: ansible.netcommon.network_cli
+  hosts: foo
+  gather_facts: false
+  tasks:
+  - name: run show clock on remote devices
+    cli_command:
+      command: show clock
