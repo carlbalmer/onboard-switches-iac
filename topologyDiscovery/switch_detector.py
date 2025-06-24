@@ -43,7 +43,7 @@ class SwitchDetector:
         self.vendor_patterns = {
             'hirschmann': ['hirschmann', 'hios', 'bobcat'],
             'lantech': ['lantech', 'tpes'],
-            'kontron': ['kontron', 'kswitch', 'istax'],
+            'kontron': ['kontron', 'kswitch', 'istax', 'microchip istax', 'kontron kswitch'],
             'nomad': ['nomad']
         }
     
@@ -152,8 +152,8 @@ class SwitchDetector:
         
         for command in commands:
             try:
-                # Use the new pexpect-based SSH client
-                output = ssh_client.send_command_to_shell(command, 5.0)
+                # Use pager handling for commands that might have long output
+                output = self._send_command_with_pager(ssh_client, command, 5.0)
                 
                 if output:
                     # Check if output contains vendor-specific patterns
@@ -173,6 +173,36 @@ class SwitchDetector:
                 continue
         
         return False
+    
+    def _send_command_with_pager(self, ssh_client: SSHClient, command: str, timeout: float) -> str:
+        """
+        Send command and handle potential pager interaction for vendor confirmation.
+        """
+        try:
+            # Send the initial command
+            output = ssh_client.send_command_to_shell(command, timeout)
+            
+            # Check if there's a pager prompt (-- more --)
+            if output and ("-- more --" in output.lower() or "next page: space" in output.lower()):
+                full_output = output
+                
+                # Keep sending spaces to get more content until no more pager prompts
+                max_pages = 5  # Limit for vendor detection
+                page_count = 0
+                
+                while ("-- more --" in full_output.lower() or "next page: space" in full_output.lower()) and page_count < max_pages:
+                    # Send space to continue
+                    additional_output = ssh_client.send_command_to_shell(" ", timeout)
+                    if additional_output:
+                        full_output += "\n" + additional_output
+                    page_count += 1
+                
+                return full_output
+            
+            return output
+            
+        except Exception:
+            return output if output else ""
     
     def get_vendor_commands(self, vendor: str) -> dict:
         """
