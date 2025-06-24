@@ -4,6 +4,7 @@
   gather_facts: false
   tasks:
   - name: run show port
+    ignore_errors: true
     cli_command:
       command: show port
   - name: run show clock with become=yes
