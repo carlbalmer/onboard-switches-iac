@@ -159,11 +159,7 @@ class SSHClient:
                     # Look for different patterns
                     i = self.session.expect([
                         '\r\n',           # 0: Regular line
-                        '--More--',       # 1: More prompt 
-                        r'!.*>',          # 2: Command prompt (Hirschmann style)
-                        r'.*>',           # 3: Generic command prompt
-                        r'.*#',           # 4: Root prompt
-                        r'.*\$',          # 5: User prompt
+                        '--More--',       # 1: More prompt
                         pexpect.TIMEOUT   # 6: Timeout
                     ], timeout=3)
                     
