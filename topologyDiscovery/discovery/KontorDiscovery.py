@@ -1,6 +1,6 @@
 from typing import Dict, List, Any, Optional
 
-from topologyDiscovery.discovery import BaseDiscovery
+from .BaseDiscovery import BaseDiscovery
 
 class KontorDiscovery(BaseDiscovery):
     def connect(self) -> bool:

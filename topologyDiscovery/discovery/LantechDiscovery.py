@@ -1,8 +1,8 @@
 from typing import Dict, List, Any, Optional
 
-from topologyDiscovery.discovery import BaseDiscovery
+from .BaseDiscovery import BaseDiscovery
 
-class LantecDiscovery(BaseDiscovery):
+class LantechDiscovery(BaseDiscovery):
     def connect(self) -> bool:
         return "connection"
     
