@@ -10,7 +10,7 @@ class TerminalModule(TerminalBase):
     ]
 
     terminal_stderr_re = [
-        re.compile(br"*"br"% Invalid word detected"),
+        re.compile(br"\% Error: Invalid command"),
     ]
 
     def on_open_shell(self):
