@@ -50,6 +50,7 @@ class HirschmannDiscovery(BaseDiscovery):
         if self.ssh_client:
             self.ssh_client.disconnect()
             self.ssh_client = None
+
     def get_basic_info(self) -> Dict[str, Any]:
         """Get essential system information: vendor, IP, and MAC address."""
         try:

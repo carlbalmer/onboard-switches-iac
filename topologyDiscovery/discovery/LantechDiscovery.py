@@ -20,6 +20,7 @@ class LantechDiscovery(BaseDiscovery):
     
     def __init__(self, host: str, username: str, password: str, port: int = 22):
         super().__init__(host, username, password, port)
+        self.ssh_client = None
         self.vendor = "lantech"
         self.logger = get_logger(__name__)
     
