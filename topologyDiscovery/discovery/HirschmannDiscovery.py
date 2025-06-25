@@ -143,7 +143,7 @@ class HirschmannDiscovery(BaseDiscovery):
     def get_switch_info(self) -> SwitchInfo:
         """Get essential switch information for network discovery."""
         try:
-            self.logger.debug(f"Attempting to connect to {self.host} with username: {self.username}")
+            self.logger.debug(f"Attempting to connect to {self.host} with privided user")
             if not self.connect():
                 self.logger.error(f"Failed to connect to {self.host}")
                 return SwitchInfo(ip=self.host, mac=None, type='hirschmann', neighbors=[])

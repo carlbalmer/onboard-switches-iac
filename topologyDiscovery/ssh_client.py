@@ -43,7 +43,7 @@ class SSHClient:
             bool: True if connection successful, False otherwise
         """
         try:
-            self.logger.debug(f"Connecting to {self.username}@{self.host}...")
+            self.logger.debug(f"Connecting to {self.host}...")
             
             # Connect via SSH with explicit options
             ssh_cmd = f'ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p {self.port} {self.username}@{self.host}'
@@ -71,7 +71,7 @@ class SSHClient:
             
             # Wait for the initial system information and prompt
             self.logger.debug("Waiting for login to complete...")
-            time.sleep(3)  # Give it time to show system info
+            time.sleep(1)  # Give it time to show system info
             
             # Now wait for the actual command prompt
             try:
@@ -98,7 +98,7 @@ class SSHClient:
             self.session = None
             self.is_connected = False
     
-    def execute_command(self, command: str, timeout: int = 10) -> Dict[str, Any]:
+    def execute_command(self, command: str, timeout: int = 5) -> Dict[str, Any]:
         """
         Execute a command using pexpect (returns dict for compatibility).
         
@@ -130,7 +130,7 @@ class SSHClient:
                 'error': str(e)
             }
     
-    def send_command_to_shell(self, command: str, wait_time: float = 3.0) -> str:
+    def send_command_to_shell(self, command: str, wait_time: float = 1.0) -> str:
         """
         Send command to interactive shell and return output.
         Based on the working ssh_command.py implementation.
@@ -154,7 +154,7 @@ class SSHClient:
             # Collect the command output
             output_lines = []
             start_time = time.time()
-            max_wait = max(wait_time * 10, 30)  # At least 30 seconds for long outputs
+            max_wait = max(wait_time * 10, 10)  # At least 10 seconds for long outputs
             
             while time.time() - start_time < max_wait:
                 try:
@@ -163,7 +163,7 @@ class SSHClient:
                         '\r\n',           # 0: Regular line
                         '--More--',       # 1: More prompt
                         pexpect.TIMEOUT   # 6: Timeout
-                    ], timeout=3)
+                    ], timeout=1)
                     
                     if i == 0:  # Regular line
                         line = self.session.before.decode('utf-8', errors='ignore').strip()
