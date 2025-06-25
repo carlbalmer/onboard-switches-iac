@@ -1,0 +1,15 @@
+- name: Remove interfaces from VLANs
+  become: true
+  ignore_errors: true
+  vars:
+    vlan_cmds: |
+      configure
+      interface {{ item.interface }}
+      {% for vlan in item.vlans %}
+      vlan participation exclude {{ vlan.vlan_id }}
+      {% endfor %}
+      exit
+  ansible.netcommon.cli_command:
+    command: "{{ vlan_cmds }}"
+  loop: "{{ interfaces_vlans_to_remove }}"
+

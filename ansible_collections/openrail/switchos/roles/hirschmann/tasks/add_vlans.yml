@@ -1,0 +1,9 @@
+- name: Add VLANs and set names
+  become: true
+  ansible.netcommon.cli_command:
+    command: |
+      vlan database
+      vlan add {{ item.vlan_id }}
+      name {{ item.vlan_id }} {{ item.name }}
+      exit
+  loop: "{{ vlans_to_add }}"

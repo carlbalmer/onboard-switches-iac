@@ -1,0 +1,9 @@
+- name: Remove VLANs
+  become: true
+  ignore_errors: true
+  ansible.netcommon.cli_command:
+    command: |
+      vlan database
+      vlan delete {{ item.vlan_id }}
+      exit
+  loop: "{{ vlans_to_remove }}"

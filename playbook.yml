@@ -1,6 +1,39 @@
 - name: test hirschmann
   hosts: hirschmann
   gather_facts: false
+  vars:
+    vlans_to_add:
+      - vlan_id: 10
+        name: "Office"
+      - vlan_id: 20
+        name: "IoT"
+      - vlan_id: 30
+        name: "Guest"
+    vlans_to_remove:
+      - vlan_id: 30
+    interfaces_vlans:
+      - interface: "1/3"
+        vlans:
+          - vlan_id: 10
+            mode: untagged
+          - vlan_id: 20
+            mode: tagged
+      - interface: "1/4"
+        vlans:
+          - vlan_id: 30
+            mode: tagged
+          - vlan_id: 40
+            mode: untagged
+    interfaces_vlans_to_remove:
+      - interface: "1/3"
+        vlans:
+          - vlan_id: 10
+          - vlan_id: 20
+      - interface: "1/4"
+        vlans:
+          - vlan_id: 30
+          - vlan_id: 40
+    
   roles:
     - openrail.switchos.hirschmann
 - name: test lantech
