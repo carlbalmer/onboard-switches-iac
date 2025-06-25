@@ -1,0 +1,5 @@
+# Python dependencies for Network Discovery Tool
+pexpect>=4.8.0
+pyyaml>=6.0
+dataclasses>=0.6; python_version < "3.7"
+    
