@@ -46,42 +46,41 @@ class VlansFacts(object):
         """
         if connection:  # just for linting purposes, remove
             pass
-
         if not data:
             # typically data is populated from the current device configuration
             # data = connection.get('show running-config | section ^interface')
             # using mock data instead
-            data = ("resource rsrc_a\n"
-                    "  a_bool true\n"
-                    "  a_string choice_a\n"
-                    "  resource here\n"
-                    "resource rscrc_b\n"
-                    "  key is property01 value is value end\n"
-                    "  an_int 10\n")
+            pass
+        response = connection.get('show running-config script')
+        data = self.parse_vlans(response)
+        # self._module.fail_json(msg=f"DEEEEEEEEEEEEEEEEEEEEEEEEEBUG: {response}") # only way i found to print and debug values
 
-        # split the config into instances of the resource
-        resource_delim = 'resource'
-        find_pattern = r'(?:^|\n)%s.*?(?=(?:^|\n)%s|$)' % (resource_delim,
-                                                           resource_delim)
-        resources = [p.strip() for p in re.findall(find_pattern,
-                                                   data,
-                                                   re.DOTALL)]
-
-        objs = []
-        for resource in resources:
-            if resource:
-                obj = self.render_config(self.generated_spec, resource)
-                if obj:
-                    objs.append(obj)
-
-        ansible_facts['ansible_network_resources'].pop('vlans', None)
         facts = {}
-        if objs:
-            params = utils.validate_config(self.argument_spec, {'config': objs})
+        if data:
+            params = utils.validate_config(self.argument_spec, {'config': data})
             facts['vlans'] = params['config']
 
         ansible_facts['ansible_network_resources'].update(facts)
         return ansible_facts
+    
+    def parse_vlans(self, stdout_lines):
+        config_text = "\n".join(stdout_lines)
+
+        # Extract the vlan database block
+        m = re.search(
+            r"vlan database(.*?)^\s*exit\s*$", config_text, re.DOTALL | re.MULTILINE
+        )
+        if not m:
+            return []
+        block = m.group(1)
+
+        # Find all vlan add lines
+        vlans = re.findall(r"vlan add (\d+)", block)
+
+        # Find all name lines
+        names = dict(re.findall(r"name (\d+)\s+([^\n]+)", block))
+
+        return [{"vlan_id": vlan, "name": names.get(vlan)} for vlan in vlans]
 
     def render_config(self, spec, conf):
         """
