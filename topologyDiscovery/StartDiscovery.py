@@ -163,11 +163,14 @@ class NetworkDiscoveryManager:
         candidate_switches: Set[str] = set()
         candidate_switches.add(seed_ip)
         print("Start looping candidates")
+        counter: int = 1
         while candidate_switches:
             is_ok = True
             current_ip = candidate_switches.pop()
             seen_switches.add(current_ip)
+            print("-----------------------------------------------------------------")
             print(f"looking at {current_ip}")
+            print("-----------------------------------------------------------------")
             try:
                 vendor, ssh_client, credentials = self.detector.detect_switch_type(current_ip)
                 if ssh_client:
@@ -191,7 +194,8 @@ class NetworkDiscoveryManager:
                         password=credentials['password']
                     )
                     switch_info = switch_instance.get_switch_info()
-                    self.discovered_switches.add(switch_info)
+                    self.topology.add_switch(switch_info)
+                    self.discovered_switches.add(switch_info.ip)
                     for neighbor in switch_info.neighbors:
                         neighbor_ip = neighbor.ip
                         if neighbor_ip not in seen_switches:
@@ -199,6 +203,11 @@ class NetworkDiscoveryManager:
             except Exception as e:
                 print(f"Discovery failed for {current_ip}: {str(e)}")
                 self.failed_switches.add(current_ip)
+            counter += 1
+            print("-----------------------------------------------------------------")
+            print(F"<<<<looked at {counter} switches>>>>>>>>>>>>>>>>>>>>>>")
+            print("-----------------------------------------------------------------")
+        print(F"<<<<looked at {counter} switches")
 
 
 
