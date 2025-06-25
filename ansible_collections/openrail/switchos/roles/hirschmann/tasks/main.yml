@@ -11,10 +11,6 @@
   ansible.builtin.import_tasks:
     file: delete_vlans.yml
 
-- name: Import show vlan members
-  ansible.builtin.import_tasks:
-    file: show_vlan_members.yml
-
 - name: Import add interfaces to vlans
   ansible.builtin.import_tasks:
     file: add_interfaces_to_vlans.yml
@@ -22,3 +18,8 @@
 - name: Import remove interfaces from vlans
   ansible.builtin.import_tasks:
     file: remove_interfaces_from_vlans.yml
+
+# this doesnt work yet
+# - name: Import show vlan members
+#   ansible.builtin.import_tasks:
+#     file: show_vlan_members.yml

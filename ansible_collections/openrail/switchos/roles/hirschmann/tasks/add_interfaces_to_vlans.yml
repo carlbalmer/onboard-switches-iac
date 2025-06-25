@@ -2,7 +2,6 @@
   become: true
   vars:
     vlan_cmds: |
-      configure
       interface {{ item.interface }}
       {% for vlan in item.vlans %}
       vlan participation include {{ vlan.vlan_id }}
@@ -14,5 +13,8 @@
       {% endfor %}
       exit
   ansible.netcommon.cli_command:
-    command: "{{ vlan_cmds }}"
+    command: |
+      configure
+      {{ vlan_cmds }}
+      exit
   loop: "{{ interfaces_vlans }}"
