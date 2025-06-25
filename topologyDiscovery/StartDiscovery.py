@@ -13,6 +13,9 @@ from datetime import datetime
 from typing import Dict, List, Set, Optional, Any
 from dataclasses import dataclass
 
+# Import logging
+from logging_config import setup_logging, get_logger
+
 # Import existing modules
 from switch_detector import SwitchDetector
 from discovery.HirschmannDiscovery import HirschmannDiscovery
@@ -34,6 +37,7 @@ class NetworkDiscoveryManager:
         Args:
             credentials_file: Path to credentials configuration file
         """
+        self.logger = get_logger(__name__)
         self.detector = SwitchDetector(credentials_file)
         self.discovered_switches: Set[str] = set()
         self.failed_switches: Set[str] = set()
@@ -55,9 +59,8 @@ class NetworkDiscoveryManager:
             seed_ip: Starting IP address for discovery
             
         Returns:
-            NetworkTopology object containing discovered network
-        """     
-        print(f"Starting network discovery from seed IP: {seed_ip}")
+            NetworkTopology object containing discovered network        """
+        self.logger.info(f"Starting network discovery from seed IP: {seed_ip}")
         
         self.topology.discovery_timestamp = datetime.now()
         
@@ -74,25 +77,25 @@ class NetworkDiscoveryManager:
         failed_switches: Set[str] = set()
         candidate_switches: Set[str] = set()
         candidate_switches.add(seed_ip)
-        print("Start looping candidates")
+        self.logger.debug("Start looping candidates")
         counter: int = 0
         while candidate_switches:
             is_ok = True
             current_ip = candidate_switches.pop()
             seen_switches.add(current_ip)
-            self._banner_print(f"looking at {current_ip}")
+            self.logger.debug(f"Looking at {current_ip}")
             try:
                 vendor, ssh_client, credentials = self.detector.detect_switch_type(current_ip)
                 if ssh_client:
                     ssh_client.disconnect()  # Close the detection connection
                     
                 if not credentials:
-                    print(f"No credentials returned for {vendor}")
+                    self.logger.warning(f"No credentials returned for {vendor}")
                     self.failed_switches.add(current_ip)
                     is_ok = False
                 
                 if not vendor:
-                    print(f"Failed to detect vendor for {current_ip}")
+                    self.logger.warning(f"Failed to detect vendor for {current_ip}")
                     self.failed_switches.add(current_ip)
                     is_ok = False
 
@@ -111,41 +114,41 @@ class NetworkDiscoveryManager:
                         if neighbor_ip not in seen_switches:
                             candidate_switches.add(neighbor_ip)
             except Exception as e:
-                print(f"Discovery failed for {current_ip}: {str(e)}")
+                self.logger.error(f"Discovery failed for {current_ip}: {str(e)}")
                 self.failed_switches.add(current_ip)
             counter += 1
-            self._banner_print(f"looked at {counter} switches")
-        self._banner_print(f"Checked all available {counter} switches")
+            self.logger.debug(f"Looked at {counter} switches")
+        self.logger.info(f"Checked all available {counter} switches")
 
     
     def _banner_print(self, message: str):
-        print("-----------------------------------------------------------------")
-        print(message)
-        print("-----------------------------------------------------------------")
+        self.logger.info("-" * 65)
+        self.logger.info(message)
+        self.logger.info("-" * 65)
     
 
     def _print_discovery_summary(self) -> None:
         """Print a summary of the discovery process."""
-        print("\n" + "="*60)
-        print("NETWORK DISCOVERY SUMMARY")
-        print("="*60)
-        print(f"✅ Successfully discovered: {len(self.discovered_switches)} switches")
-        print(f"❌ Failed to discover: {len(self.failed_switches)} switches")
-        print(f"🕒 Discovery timestamp: {self.topology.discovery_timestamp}")
+        self.logger.info("\n" + "="*60)
+        self.logger.info("NETWORK DISCOVERY SUMMARY")
+        self.logger.info("="*60)
+        self.logger.info(f"✅ Successfully discovered: {len(self.discovered_switches)} switches")
+        self.logger.info(f"❌ Failed to discover: {len(self.failed_switches)} switches")
+        self.logger.info(f"🕒 Discovery timestamp: {self.topology.discovery_timestamp}")
         
         if self.discovered_switches:
-            print(f"\nDiscovered switches:")
+            self.logger.info(f"\nDiscovered switches:")
             for ip in sorted(self.discovered_switches):
                 switch = self.topology.get_switch(ip)
                 if switch:
-                    print(f"   {ip} - {switch.type} ({len(switch.neighbors)} neighbors)")
+                    self.logger.info(f"   {ip} - {switch.type} ({len(switch.neighbors)} neighbors)")
         
         if self.failed_switches:
-            print(f"\nFailed switches:")
+            self.logger.info(f"\nFailed switches:")
             for ip in sorted(self.failed_switches):
-                print(f"   {ip}")
+                self.logger.info(f"   {ip}")
         
-        print("="*60)
+        self.logger.info("="*60)
     
     def save_to_file(self, filename: str, format: str = 'json') -> None:
         """
@@ -164,10 +167,10 @@ class NetworkDiscoveryManager:
                 else:
                     json.dump(topology_dict, f, indent=2, default=str)
             
-            print(f"Topology saved to {filename}")
+            self.logger.info(f"Topology saved to {filename}")
             
         except Exception as e:
-            print(f"Failed to save topology: {str(e)}")
+            self.logger.error(f"Failed to save topology: {str(e)}")
     
     def get_topology_stats(self) -> Dict[str, Any]:
         """
@@ -232,12 +235,16 @@ Examples:
     
     args = parser.parse_args()
     
-    print("Network Switch Discovery Tool")
-    print("=" * 40)
-    print(f"Seed IP: {args.seed_ip}")
-    print(f"Credentials: {args.credentials}")
-    print(f"Output Directory: {args.output_dir}")
-    print()
+    # Setup logging
+    log_level = "DEBUG" if args.verbose else "INFO"
+    logger = setup_logging(log_level)
+    
+    logger.info("Network Switch Discovery Tool")
+    logger.info("=" * 40)
+    logger.info(f"Seed IP: {args.seed_ip}")
+    logger.info(f"Credentials: {args.credentials}")
+    logger.info(f"Output Directory: {args.output_dir}")
+    logger.info("")
     
     try:
         # Initialize discovery manager
@@ -261,20 +268,20 @@ Examples:
         # Print statistics
         stats = discovery_manager.get_topology_stats()
         
-        print("Discovery completed successfully!")
-        print(f"Results saved to:")
-        print(f"  - Topology (JSON): {topology_filename}")
-        print(f"  - Inventory (YAML): {inventory_filename}")
-        print(f"\nDiscovery Statistics:")
-        print(f"  - Total switches discovered: {stats['total_switches']}")
-        print(f"  - Switch types: {stats['switch_types']}")
-        print(f"  - Total neighbor connections: {stats['total_neighbors']}")
+        logger.info("Discovery completed successfully!")
+        logger.info(f"Results saved to:")
+        logger.info(f"  - Topology (JSON): {topology_filename}")
+        logger.info(f"  - Inventory (YAML): {inventory_filename}")
+        logger.info(f"\nDiscovery Statistics:")
+        logger.info(f"  - Total switches discovered: {stats['total_switches']}")
+        logger.info(f"  - Switch types: {stats['switch_types']}")
+        logger.info(f"  - Total neighbor connections: {stats['total_neighbors']}")
         
     except KeyboardInterrupt:
-        print("\nDiscovery interrupted by user")
+        logger.info("\nDiscovery interrupted by user")
         sys.exit(1)
     except Exception as e:
-        print(f"Discovery failed: {e}")
+        logger.error(f"Discovery failed: {e}")
         if args.verbose:
             import traceback
             traceback.print_exc()

@@ -6,6 +6,7 @@ import pexpect
 import time
 import re
 from typing import Optional, Tuple, Dict, Any
+from logging_config import get_logger
 
 
 class SSHClient:
@@ -32,6 +33,7 @@ class SSHClient:
         self.timeout = timeout
         self.session = None
         self.is_connected = False
+        self.logger = get_logger(__name__)
     
     def connect(self) -> bool:
         """
@@ -41,7 +43,7 @@ class SSHClient:
             bool: True if connection successful, False otherwise
         """
         try:
-            print(f"Connecting to {self.username}@{self.host}...")
+            self.logger.debug(f"Connecting to {self.username}@{self.host}...")
             
             # Connect via SSH with explicit options
             ssh_cmd = f'ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p {self.port} {self.username}@{self.host}'
@@ -49,41 +51,41 @@ class SSHClient:
             self.session.timeout = self.timeout
             
             # Handle SSH connection prompts
-            print("Waiting for password prompt...")
+            self.logger.debug("Waiting for password prompt...")
             i = self.session.expect(['password:', 'Password:', 'yes/no', pexpect.TIMEOUT, pexpect.EOF])
             
             if i == 2:  # Handle "yes/no" prompt for first connection
-                print("Accepting host key...")
+                self.logger.debug("Accepting host key...")
                 self.session.sendline('yes')
                 self.session.expect(['password:', 'Password:'])
             elif i == 3:  # Timeout
-                print("Connection timeout waiting for password prompt")
+                self.logger.debug("Connection timeout waiting for password prompt")
                 return False
             elif i == 4:  # EOF
-                print("Connection closed unexpectedly")
+                self.logger.debug("Connection closed unexpectedly")
                 return False
                 
             # Send password
-            print("Sending password...")
+            self.logger.debug("Sending password...")
             self.session.sendline(self.password)
             
             # Wait for the initial system information and prompt
-            print("Waiting for login to complete...")
+            self.logger.debug("Waiting for login to complete...")
             time.sleep(3)  # Give it time to show system info
             
             # Now wait for the actual command prompt
             try:
                 self.session.expect([r'!.*>', r'.*>', r'.*#', r'.*\$', pexpect.TIMEOUT], timeout=10)
-                print("Found command prompt")
+                self.logger.debug("Found command prompt")
                 self.is_connected = True
                 return True
             except pexpect.TIMEOUT:
-                print("Timeout waiting for command prompt, but continuing...")
+                self.logger.debug("Timeout waiting for command prompt, but continuing...")
                 self.is_connected = True
                 return True
                 
         except Exception as e:
-            print(f"SSH connection failed: {e}")
+            self.logger.error(f"SSH connection failed: {e}")
             return False
     
     def disconnect(self) -> None:
@@ -144,7 +146,7 @@ class SSHClient:
             return ""
         
         try:
-            print(f"Sending command: {command}")
+            self.logger.debug(f"Sending command: {command}")
             
             # Send the command
             self.session.sendline(command)
@@ -167,14 +169,14 @@ class SSHClient:
                         line = self.session.before.decode('utf-8', errors='ignore').strip()
                         if line and line != command and not line.startswith(command):
                             output_lines.append(line)
-                            print(f"Got line: {line[:80]}...")  # Show first 80 chars
+                            self.logger.debug(f"Got line: {line[:80]}...")  # Show first 80 chars
                             
                     elif i == 1:  # More prompt
-                        print("Detected 'More' prompt, sending space...")
+                        self.logger.debug("Detected 'More' prompt, sending space...")
                         self.session.send(' ')
                         
                     elif i in [2, 3, 4, 5]:  # Back to command prompt
-                        print("Back at command prompt, command completed")
+                        self.logger.debug("Back at command prompt, command completed")
                         # Get any remaining output
                         remaining = self.session.before.decode('utf-8', errors='ignore').strip()
                         if remaining and remaining != command and not remaining.startswith(command):
@@ -184,26 +186,26 @@ class SSHClient:
                     elif i == 6:  # Timeout
                         # Check if we have accumulated enough output
                         if output_lines:
-                            print("Timeout but got output, continuing...")
+                            self.logger.debug("Timeout but got output, continuing...")
                             continue
                         else:
-                            print("Timeout with no output")
+                            self.logger.debug("Timeout with no output")
                             break
                             
                 except pexpect.EOF:
-                    print("Connection closed during command execution")
+                    self.logger.debug("Connection closed during command execution")
                     break
                 except Exception as e:
-                    print(f"Exception during command execution: {e}")
+                    self.logger.debug(f"Exception during command execution: {e}")
                     break
             
             # Join all output lines
             full_output = '\n'.join(output_lines)
-            print(f"Command completed, got {len(full_output)} characters of output")
+            self.logger.debug(f"Command completed, got {len(full_output)} characters of output")
             return full_output
             
         except Exception as e:
-            print(f"Failed to execute command '{command}': {e}")
+            self.logger.error(f"Failed to execute command '{command}': {e}")
             return ""
     
     def start_shell(self) -> bool:

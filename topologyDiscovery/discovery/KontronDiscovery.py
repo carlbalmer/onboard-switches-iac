@@ -13,6 +13,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from .BaseDiscovery import BaseDiscovery
 from ssh_client import SSHClient
 from data_model import SwitchInfo, NeighborInfo
+from logging_config import get_logger
 
 
 class KontronDiscovery(BaseDiscovery):
@@ -22,6 +23,7 @@ class KontronDiscovery(BaseDiscovery):
         super().__init__(host, username, password, port)
         self.ssh_client = None
         self.vendor = "kontron"
+        self.logger = get_logger(__name__)
     
     def connect(self) -> bool:
         """Establish SSH connection to Kontron switch."""
@@ -41,7 +43,7 @@ class KontronDiscovery(BaseDiscovery):
             return False
             
         except Exception as e:
-            print(f"Connection failed to {self.host}: {e}")
+            self.logger.error(f"Connection failed to {self.host}: {e}")
             return False
     
     def disconnect(self) -> None:
@@ -88,7 +90,7 @@ class KontronDiscovery(BaseDiscovery):
             return []
             
         except Exception as e:
-            print(f"Failed to get neighbor info: {e}")
+            self.logger.error(f"Failed to get neighbor info: {e}")
             return []
     
     def _parse_lldp_neighbors(self, output: str) -> List[NeighborInfo]:
@@ -157,24 +159,24 @@ class KontronDiscovery(BaseDiscovery):
     def get_switch_info(self) -> SwitchInfo:
         """Get essential switch information for network discovery."""
         try:
-            print(f"Attempting to connect to {self.host} with username: {self.username}")
+            self.logger.info(f"Attempting to connect to {self.host} with username: {self.username}")
             if not self.connect():
-                print(f"Failed to connect to {self.host}")
+                self.logger.error(f"Failed to connect to {self.host}")
                 return SwitchInfo(ip=self.host, mac=None, type='kontron', neighbors=[])
             
-            print(f"Successfully connected to {self.host}")
+            self.logger.info(f"Successfully connected to {self.host}")
             
             # Get basic info (vendor, IP, MAC)
             basic_info = self.get_basic_info()
-            print(f"System info retrieved: {list(basic_info.keys()) if basic_info else 'None'}")
+            self.logger.info(f"System info retrieved: {list(basic_info.keys()) if basic_info else 'None'}")
             
             # Get neighbor information
-            print("Getting neighbor information...")
+            self.logger.info("Getting neighbor information...")
             neighbors = self.get_neighbors()
-            print(f"Found {len(neighbors)} neighbors")
+            self.logger.info(f"Found {len(neighbors)} neighbors")
             
             self.disconnect()
-            print(f"Disconnected from {self.host}")
+            self.logger.info(f"Disconnected from {self.host}")
             
             return SwitchInfo(
                 ip=basic_info.get('ip', self.host),
@@ -184,7 +186,7 @@ class KontronDiscovery(BaseDiscovery):
             )
             
         except Exception as e:
-            print(f"Failed to get switch info: {e}")
+            self.logger.error(f"Failed to get switch info: {e}")
             try:
                 self.disconnect()
             except:
@@ -220,7 +222,7 @@ class KontronDiscovery(BaseDiscovery):
             return output
             
         except Exception as e:
-            print(f"Error sending command with pager handling: {e}")
+            self.logger.error(f"Error sending command with pager handling: {e}")
             return ""
     
     # Compatibility methods required by BaseDiscovery

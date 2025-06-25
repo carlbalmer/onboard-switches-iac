@@ -1,7 +1,7 @@
 """
-Lantech Switch Discovery Implementation (Stub)
-TODO: Implement Lantech-specific discovery logic
+Lantech Switch Discovery Implementation
 """
+import re
 import sys
 import os
 from typing import Dict, List, Any
@@ -11,7 +11,8 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from .BaseDiscovery import BaseDiscovery
 from ssh_client import SSHClient
-from data_model import SwitchInfo
+from data_model import SwitchInfo, NeighborInfo
+from logging_config import get_logger
 
 
 class LantechDiscovery(BaseDiscovery):
@@ -20,6 +21,7 @@ class LantechDiscovery(BaseDiscovery):
     def __init__(self, host: str, username: str, password: str, port: int = 22):
         super().__init__(host, username, password, port)
         self.vendor = "lantech"
+        self.logger = get_logger(__name__)
     
     def connect(self) -> bool:
         """Establish SSH connection to Lantech switch."""
@@ -39,7 +41,7 @@ class LantechDiscovery(BaseDiscovery):
             return False
             
         except Exception as e:
-            print(f"Connection failed to {self.host}: {e}")
+            self.logger.error(f"Connection failed to {self.host}: {e}")
             return False
     
     def disconnect(self) -> None:

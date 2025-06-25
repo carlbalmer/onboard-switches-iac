@@ -5,6 +5,7 @@ import yaml
 import time
 from typing import Dict, List, Optional, Tuple
 from ssh_client import SSHClient
+from logging_config import get_logger
 
 
 class SwitchDetector:
@@ -20,6 +21,7 @@ class SwitchDetector:
         Args:
             credentials_file: Path to credentials YAML file
         """
+        self.logger = get_logger(__name__)
         self.credentials = self._load_credentials(credentials_file)
         self.ssh_settings = self.credentials.get('ssh_settings', {})
         
@@ -53,7 +55,7 @@ class SwitchDetector:
             with open(credentials_file, 'r') as f:
                 return yaml.safe_load(f)
         except Exception as e:
-            print(f"Error loading credentials: {e}")
+            self.logger.error(f"Error loading credentials: {e}")
             return {}
     
     def detect_switch_type(self, host: str) -> Tuple[Optional[str], Optional[SSHClient], Optional[dict]]:
@@ -67,10 +69,10 @@ class SwitchDetector:
             Tuple of (vendor_name, ssh_client, credentials_used)
             Returns (None, None, None) if detection fails
         """
-        print(f"Starting auto-detection for switch at {host}")
+        self.logger.info(f"Starting auto-detection for switch at {host}")
         
         for vendor, vendor_creds in self.credentials.get('credentials', {}).items():
-            print(f"  Trying {vendor} credentials...")
+            self.logger.debug(f"  Trying {vendor} credentials...")
             
             # Try default credentials first
             ssh_client, creds_used = self._try_vendor_credentials(host, vendor, vendor_creds)
@@ -78,13 +80,13 @@ class SwitchDetector:
             if ssh_client:
                 # Test if this is actually the right vendor
                 if self._confirm_vendor(ssh_client, vendor):
-                    print(f"  ✓ Detected {vendor} switch at {host}")
+                    self.logger.info(f"  ✓ Detected {vendor} switch at {host}")
                     return vendor, ssh_client, creds_used
                 else:
-                    print(f"  ✗ Connected but not a {vendor} switch")
+                    self.logger.debug(f"  ✗ Connected but not a {vendor} switch")
                     ssh_client.disconnect()
         
-        print(f"  ✗ Failed to detect switch type for {host}")
+        self.logger.warning(f"  ✗ Failed to detect switch type for {host}")
         return None, None, None
     
     def _try_vendor_credentials(self, host: str, vendor: str, vendor_creds: dict) -> Tuple[Optional[SSHClient], Optional[dict]]:
@@ -132,7 +134,7 @@ class SwitchDetector:
                 return ssh_client
                 
         except Exception as e:
-            print(f"    Connection failed: {e}")
+            self.logger.debug(f"    Connection failed: {e}")
         
         return None
     
@@ -160,16 +162,16 @@ class SwitchDetector:
                     output_lower = output.lower()
                     for pattern in patterns:
                         if pattern.lower() in output_lower:
-                            print(f"    ✓ Confirmed {vendor} - found '{pattern}' in output")
+                            self.logger.debug(f"    ✓ Confirmed {vendor} - found '{pattern}' in output")
                             return True
                     
                     # Debug: Show what we got vs what we're looking for
-                    print(f"    ✗ Output received but no patterns matched")
-                    print(f"    Looking for: {patterns}")
-                    print(f"    Output preview: {output[:200]}...")
+                    self.logger.debug(f"    ✗ Output received but no patterns matched")
+                    self.logger.debug(f"    Looking for: {patterns}")
+                    self.logger.debug(f"    Output preview: {output[:200]}...")
                 
             except Exception as e:
-                print(f"    Command '{command}' failed: {e}")
+                self.logger.debug(f"    Command '{command}' failed: {e}")
                 continue
         
         return False
@@ -250,6 +252,9 @@ class SwitchDetector:
 
 if __name__ == "__main__":
     # Test the detector
+    from logging_config import setup_logging
+    setup_logging("DEBUG")
+    
     detector = SwitchDetector()
     
     # Test with a sample IP
