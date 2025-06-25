@@ -91,9 +91,6 @@ python StartDiscovery.py 192.168.1.31
 
 ### 4. Advanced Usage
 ```bash
-# Limit discovery depth
-python StartDiscovery.py 192.168.1.31 --depth 3
-
 # Use custom credentials file
 python StartDiscovery.py 192.168.1.31 --credentials my_creds.yaml
 
@@ -197,7 +194,6 @@ all:
 - **Recursive Discovery**: Discovers entire network topology through LLDP neighbors
 - **Robust Error Handling**: Continues discovery even if some switches fail
 - **Multiple Output Formats**: JSON topology and Ansible inventory
-- **Configurable Depth**: Prevents infinite loops with configurable discovery depth
 - **Comprehensive Logging**: Detailed output showing discovery progress
 
 ## Extending the Tool
@@ -213,7 +209,7 @@ To add support for a new vendor:
 ## Example Hirschmann Output
 
 ```
-🔍 Discovering switch at 192.168.1.31 (depth: 0)
+🔍 Discovering switch at 192.168.1.31
   Trying hirschmann credentials...
   ✓ Confirmed hirschmann - found 'hirschmann' in output
   ✓ Detected hirschmann switch at 192.168.1.31
@@ -236,5 +232,4 @@ Management MAC: 74:0B:B0:16:AB:1A
 
 - **Connection Issues**: Check credentials in `credentials.yaml`
 - **Command Failures**: Verify switch model supports the expected commands
-- **Discovery Loops**: Adjust `--depth` parameter to limit recursion
 - **Performance**: Use `--verbose` flag for detailed debugging information
