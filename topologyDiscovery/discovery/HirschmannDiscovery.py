@@ -34,6 +34,7 @@ class HirschmannDiscovery(BaseDiscovery):
             
             if self.ssh_client.connect() and self.ssh_client.start_shell():
                 self.ssh_client.send_command_to_shell("", 1.0)  # Clear initial prompt
+                self.ssh_client.send_command_to_shell("cli numlines 0", 1.0) # disable interactive prompt
                 return True
             
             return False

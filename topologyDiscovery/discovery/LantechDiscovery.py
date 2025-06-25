@@ -10,6 +10,7 @@ from typing import Dict, List, Any
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from .BaseDiscovery import BaseDiscovery
+from ssh_client import SSHClient
 from data_model import SwitchInfo
 
 
@@ -21,9 +22,25 @@ class LantechDiscovery(BaseDiscovery):
         self.vendor = "lantech"
     
     def connect(self) -> bool:
-        """TODO: Implement Lantech connection logic."""
-        print(f"TODO: Implement Lantech connection to {self.host}")
-        return False
+        """Establish SSH connection to Lantech switch."""
+        try:
+            self.ssh_client = SSHClient(
+                host=self.host,
+                username=self.username,
+                password=self.password,
+                port=self.port
+            )
+            
+            if self.ssh_client.connect() and self.ssh_client.start_shell():
+                self.ssh_client.send_command_to_shell("", 1.0)  # Clear initial prompt
+                self.ssh_client.send_command_to_shell("cli numlines 0", 1.0) # disable interactive prompt
+                return True
+            
+            return False
+            
+        except Exception as e:
+            print(f"Connection failed to {self.host}: {e}")
+            return False
     
     def disconnect(self) -> None:
         """TODO: Implement Lantech disconnect logic."""
